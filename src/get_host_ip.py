@@ -57,8 +57,10 @@ def main():
         print(f"Processing: {hostname}")
         results.append(get_host_info(hostname))
     
-    # Generate output filename
-    output_file = input_file.stem + "_results.json"
+    # Generate output filename in results directory
+    output_dir = Path(__file__).parent.parent / "results"
+    output_dir.mkdir(exist_ok=True)
+    output_file = output_dir / f"{input_file.stem}_results.json"
     
     # Write results to JSON
     with open(output_file, 'w') as f:
@@ -68,4 +70,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
