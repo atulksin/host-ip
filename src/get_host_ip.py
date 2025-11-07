@@ -16,17 +16,52 @@ def get_host_info(hostname):
         # Get FQDN
         info["fqdn"] = socket.getfqdn(hostname)
         
-        # Get all IP addresses
-        addr_info = socket.getaddrinfo(hostname, None)
+        # Try multiple methods to get all IP addresses
         
-        for addr in addr_info:
-            family = addr[0]
-            ip = addr[4][0]
-            
-            if family == socket.AF_INET and ip not in info["ipv4"]:
-                info["ipv4"].append(ip)
-            elif family == socket.AF_INET6 and ip not in info["ipv6"]:
-                info["ipv6"].append(ip)
+        # Method 1: getaddrinfo with unspecified family (gets both IPv4 and IPv6)
+        try:
+            addr_info = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC)
+            for addr in addr_info:
+                family = addr[0]
+                ip = addr[4][0]
+                
+                # Remove zone ID from IPv6 addresses (e.g., %eth0)
+                if '%' in ip:
+                    ip = ip.split('%')[0]
+                
+                if family == socket.AF_INET and ip not in info["ipv4"]:
+                    info["ipv4"].append(ip)
+                elif family == socket.AF_INET6 and ip not in info["ipv6"]:
+                    info["ipv6"].append(ip)
+        except socket.gaierror:
+            pass
+        
+        # Method 2: Explicitly try IPv4
+        try:
+            ipv4_info = socket.getaddrinfo(hostname, None, socket.AF_INET)
+            for addr in ipv4_info:
+                ip = addr[4][0]
+                if ip not in info["ipv4"]:
+                    info["ipv4"].append(ip)
+        except socket.gaierror:
+            pass
+        
+        # Method 3: Explicitly try IPv6
+        try:
+            ipv6_info = socket.getaddrinfo(hostname, None, socket.AF_INET6)
+            for addr in ipv6_info:
+                ip = addr[4][0]
+                # Remove zone ID from IPv6 addresses
+                if '%' in ip:
+                    ip = ip.split('%')[0]
+                if ip not in info["ipv6"]:
+                    info["ipv6"].append(ip)
+        except socket.gaierror:
+            pass
+        
+        # If we still have no results, raise an error
+        if not info["ipv4"] and not info["ipv6"]:
+            raise socket.gaierror("No addresses found")
                 
     except socket.gaierror as e:
         info["error"] = f"DNS lookup failed: {str(e)}"
