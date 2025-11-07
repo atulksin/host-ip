@@ -3,6 +3,12 @@ import json
 import sys
 from pathlib import Path
 
+try:
+    import dns.resolver
+    HAS_DNSPYTHON = True
+except ImportError:
+    HAS_DNSPYTHON = False
+
 def get_host_info(hostname):
     """Get IP information for a given hostname."""
     info = {
@@ -16,9 +22,38 @@ def get_host_info(hostname):
         # Get FQDN
         info["fqdn"] = socket.getfqdn(hostname)
         
+        # Method 1: Use dnspython for direct DNS queries (like nslookup)
+        if HAS_DNSPYTHON:
+            try:
+                # Query A records (IPv4)
+                try:
+                    answers = dns.resolver.resolve(hostname, 'A')
+                    for rdata in answers:
+                        ip = str(rdata)
+                        if ip not in info["ipv4"]:
+                            info["ipv4"].append(ip)
+                except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers):
+                    pass
+                
+                # Query AAAA records (IPv6)
+                try:
+                    answers = dns.resolver.resolve(hostname, 'AAAA')
+                    for rdata in answers:
+                        ip = str(rdata)
+                        # Remove zone ID from IPv6 addresses
+                        if '%' in ip:
+                            ip = ip.split('%')[0]
+                        if ip not in info["ipv6"]:
+                            info["ipv6"].append(ip)
+                except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers):
+                    pass
+            except Exception:
+                pass  # Fall back to socket methods
+        
+        # Method 2: Try socket.getaddrinfo as fallback or supplement
         # Try multiple methods to get all IP addresses
         
-        # Method 1: getaddrinfo with unspecified family (gets both IPv4 and IPv6)
+        # Try AF_UNSPEC (both IPv4 and IPv6)
         try:
             addr_info = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC)
             for addr in addr_info:
@@ -36,7 +71,7 @@ def get_host_info(hostname):
         except socket.gaierror:
             pass
         
-        # Method 2: Explicitly try IPv4
+        # Explicitly try IPv4
         try:
             ipv4_info = socket.getaddrinfo(hostname, None, socket.AF_INET)
             for addr in ipv4_info:
@@ -46,7 +81,7 @@ def get_host_info(hostname):
         except socket.gaierror:
             pass
         
-        # Method 3: Explicitly try IPv6
+        # Explicitly try IPv6
         try:
             ipv6_info = socket.getaddrinfo(hostname, None, socket.AF_INET6)
             for addr in ipv6_info:

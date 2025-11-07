@@ -17,11 +17,12 @@ host-ip/
 
 ## Features
 
-- Resolves hostnames to IP addresses
-- Supports both IPv4 and IPv6
+- Resolves hostnames to IP addresses using direct DNS queries (like nslookup)
+- Supports both IPv4 (A records) and IPv6 (AAAA records)
 - Returns FQDN (Fully Qualified Domain Name)
 - Outputs results in JSON format
 - Handles DNS lookup errors gracefully
+- Falls back to socket resolution if DNS query fails
 
 ## Usage
 
@@ -65,13 +66,45 @@ python -m pytest tests/
 Or using unittest:
 
 ```bash
-python -m unittest tests/test_get_host_ip.py
+python -m unittest tests/test_get_host_ip.py -v
+```
+
+## Troubleshooting
+
+If IPv6 addresses are not being captured:
+
+1. Test DNS resolution directly:
+```bash
+python src/test_dns.py <hostname>
+```
+
+2. Compare with nslookup:
+```bash
+nslookup <hostname>
+```
+
+3. Ensure dnspython is installed:
+```bash
+pip install -r requirements.txt
 ```
 
 ## Requirements
 
 - Python 3.6+
-- Standard library only (no external dependencies)
+- dnspython (for direct DNS queries like nslookup)
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/atulksin/host-ip.git
+cd host-ip
+```
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
 ## License
 

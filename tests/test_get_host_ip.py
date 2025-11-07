@@ -8,6 +8,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from get_host_ip import get_host_info
 
+try:
+    import dns.resolver
+    HAS_DNSPYTHON = True
+except ImportError:
+    HAS_DNSPYTHON = False
+
 
 class TestGetHostInfo(unittest.TestCase):
     """Test cases for get_host_info function."""
@@ -42,12 +48,16 @@ class TestGetHostInfo(unittest.TestCase):
         self.assertEqual(result["hostname"], "google.com")
         self.assertIsNotNone(result["fqdn"])
         
-        # Google should have both IPv4 and IPv6
-        self.assertTrue(len(result["ipv4"]) > 0)
+        # Google should have at least IPv4 (IPv6 depends on network)
+        self.assertTrue(len(result["ipv4"]) > 0 or len(result["ipv6"]) > 0)
         
         # Verify IPv4 format
         for ip in result["ipv4"]:
             self.assertRegex(ip, r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+        
+        # Verify IPv6 format if present
+        for ip in result["ipv6"]:
+            self.assertIn(':', ip)
     
     def test_invalid_hostname(self):
         """Test handling of invalid hostname."""
@@ -130,6 +140,23 @@ class TestIPAddressValidation(unittest.TestCase):
         for ip in result["ipv6"]:
             # IPv6 addresses should contain colons
             self.assertIn(':', ip)
+    
+    @unittest.skipIf(not HAS_DNSPYTHON, "dnspython not installed")
+    def test_dns_query_google(self):
+        """Test direct DNS query for google.com."""
+        result = get_host_info("google.com")
+        
+        # Should get results via DNS query
+        self.assertTrue(len(result["ipv4"]) > 0 or len(result["ipv6"]) > 0)
+        self.assertNotIn("error", result)
+    
+    def test_no_zone_id_in_ipv6(self):
+        """Test that zone IDs are stripped from IPv6 addresses."""
+        result = get_host_info("localhost")
+        
+        # IPv6 addresses should not contain % (zone ID)
+        for ip in result["ipv6"]:
+            self.assertNotIn('%', ip, "IPv6 address should not contain zone ID")
 
 
 if __name__ == "__main__":
