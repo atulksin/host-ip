@@ -1,0 +1,15 @@
+[
+  {
+    "hostname": "DESKTOP-2G7OVO3",
+    "fqdn": "host.docker.internal",
+    "ipv4": [
+      "192.168.0.17",
+      "10.5.0.2",
+      "172.23.80.1"
+    ],
+    "ipv6": [
+      "fe80::4d7:f2cd:907f:8127",
+      "fe80::1ba1:ccbd:f59d:b73e"
+    ]
+  }
+]
